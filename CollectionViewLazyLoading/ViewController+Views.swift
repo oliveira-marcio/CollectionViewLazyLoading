@@ -9,18 +9,31 @@ import UIKit
 
 extension ViewController {
     func createRootView() -> UIStackView {
-        let stackView = UIStackView(arrangedSubviews: [label])
+        let stackView = UIStackView(arrangedSubviews: [tableView])
         stackView.translatesAutoresizingMaskIntoConstraints = false
-        stackView.setCustomSpacing(8, after: label)
+        stackView.setCustomSpacing(8, after: tableView)
         stackView.axis = .vertical
         return stackView
     }
 
-    func createLabel() -> UILabel {
-        let label = UILabel()
-        label.text = "Hello World"
-        label.textAlignment = .center
-        return label
+    internal func createTableView() -> UITableView{
+        let table = UITableView()
+        table.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
+        table.backgroundColor = .clear
+        table.separatorStyle = .singleLine
+        return table
+    }
+
+    func createDataSource() -> DataSource {
+        DataSource(tableView: tableView) { tableView, indexPath, viewModel -> UITableViewCell? in
+            var cell: UITableViewCell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
+            var content = cell.defaultContentConfiguration()
+            content.text = viewModel.name
+            content.secondaryText = viewModel.countLabel
+            cell.contentConfiguration = content
+            cell.selectionStyle = .none
+            return cell
+        }
     }
 
     func setupSubviews() {
