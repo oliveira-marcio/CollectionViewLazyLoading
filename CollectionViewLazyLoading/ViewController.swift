@@ -7,6 +7,20 @@
 
 import UIKit
 
+/**
+ * The goal here is to update separated rows of the table view based on asynchronous interactors responses with data for each row.
+ *
+ * Therefore, we can just create updated snapshots as soon as we receive the data from each interactor, and apply them to the table view.
+ * Because of the capabilities of `UITableViewDiffableDataSource`, no unnecessary refresh will be done in rows with unchanged
+ * data when we apply the snapshot with the full list of models.
+ *
+ * The `rowMap` will keep an indexed list of models to be updated as they are asynchronously received and the snapshots will always be
+ * created from it. The indexes will also ensure that the rows will be assembled in the correct order.
+ *
+ * In the first run, the map will be empty, so the table view will grow accordingly to the data received. The next runs will only update the
+ * contents of the rows.
+ */
+
 class ViewController: UIViewController {
     lazy var rootView: UIView = createRootView()
     lazy var loadingLabel: UILabel = createLoadingLabel()
@@ -20,24 +34,23 @@ class ViewController: UIViewController {
     enum Section { case main }
 
     var interactors = [Interactor]()
+    var rowMap = [Int: InteractorModel]()
 
     override func viewDidLoad() {
         super.viewDidLoad()
         setupSubviews()
         setupConstraints()
-        display(models: createModels())
-        createInteractors(3)
+        createInteractors(10)
     }
 
-    private func createModels() -> [InteractorModel] {
-        stride(from: 1, to: 11, by: 1).map { InteractorModel(id: $0, count: 0) }
-    }
-
-    private func createInteractors(_ quantity: Int) {
+    /// Helper to dynamically create multiple interactors. The number of table rows will match it.
+    func createInteractors(_ quantity: Int) {
         Array(1...quantity).forEach { interactors.append(Interactor(id: $0)) }
     }
 
-    private func shuffleInteractorsDelays() {
+    /// Helper to shuffle the interactors delays so it will be easier to notice the rows updates.
+    /// Each interactor will complete 1 second after the previous one.
+    func shuffleInteractorsDelays() {
         interactors.shuffled().enumerated().forEach { delay, interactor in
             interactor.delay = delay
         }
@@ -50,7 +63,7 @@ class ViewController: UIViewController {
         dataSource.apply(snapShot, animatingDifferences: true)
     }
 
-    private func display(loading: Bool) {
+    func display(loading: Bool) {
         loadingLabel.isHidden = !loading
         button.isEnabled = !loading
     }
@@ -70,6 +83,18 @@ class ViewController: UIViewController {
 
     func getData(with interactor: Interactor?) async {
         await interactor?.fetchData()
-        print("Interactor \(interactor?.model?.id ?? -1) finished")
+        refreshTableView(with: interactor?.model)
+    }
+
+    func refreshTableView(with model: InteractorModel?) {
+        guard let model = model else { return }
+        rowMap[model.id] = model
+        display(models: getSortedModels())
+    }
+
+    func getSortedModels() -> [InteractorModel] {
+        rowMap
+            .sorted { $0.0 < $1.0 }
+            .map { $0.1 }
     }
 }
