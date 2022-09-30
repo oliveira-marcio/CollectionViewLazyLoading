@@ -26,6 +26,10 @@ class ViewController: UIViewController {
 
     enum Section { case main }
 
+    var interactor1 = Interactor(id: 1, delay: 3)
+    var interactor2 = Interactor(id: 2, delay: 2)
+    var interactor3 = Interactor(id: 3, delay: 1)
+
     override func viewDidLoad() {
         super.viewDidLoad()
         setupSubviews()
@@ -33,9 +37,8 @@ class ViewController: UIViewController {
         display(models: createModels())
     }
 
-    var counter = 0
     private func createModels() -> [RowModel] {
-        stride(from: 1, to: 11, by: 1).map { RowModel(id: $0, count: counter) }
+        stride(from: 1, to: 11, by: 1).map { RowModel(id: $0, count: 0) }
     }
 
     func display(models: [RowModel]) {
@@ -47,13 +50,20 @@ class ViewController: UIViewController {
 
     @objc func loadTapped() {
         Task {
-            counter += 1
             loadingLabel.isHidden = false
             button.isEnabled = false
-            try await Task.sleep(until: .now + .seconds(2), clock: .continuous)
+            await withTaskGroup(of: Void.self) { group in
+                group.addTask { [weak self] in await self?.getData(with: self?.interactor1) }
+                group.addTask { [weak self] in await self?.getData(with: self?.interactor2) }
+                group.addTask { [weak self] in await self?.getData(with: self?.interactor3) }
+            }
             loadingLabel.isHidden = true
             button.isEnabled = true
-            display(models: createModels())
         }
+    }
+
+    func getData(with interactor: Interactor?) async {
+        await interactor?.fetchData()
+        print("Interactor \(interactor?.model?.id ?? -1) finished")
     }
 }
