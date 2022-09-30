@@ -7,13 +7,6 @@
 
 import UIKit
 
-struct RowModel: Hashable {
-    let id: Int
-    let count: Int
-    var name: String { "Row \(id)" }
-    var countLabel: String { "Update: \(count)"}
-}
-
 class ViewController: UIViewController {
     lazy var rootView: UIView = createRootView()
     lazy var loadingLabel: UILabel = createLoadingLabel()
@@ -21,44 +14,57 @@ class ViewController: UIViewController {
     lazy var dataSource: DataSource = createDataSource()
     lazy var button: UIButton = createButton()
 
-    typealias DataSource = UITableViewDiffableDataSource<Section, RowModel>
-    typealias Snapshot = NSDiffableDataSourceSnapshot<Section, RowModel>
+    typealias DataSource = UITableViewDiffableDataSource<Section, InteractorModel>
+    typealias Snapshot = NSDiffableDataSourceSnapshot<Section, InteractorModel>
 
     enum Section { case main }
 
-    var interactor1 = Interactor(id: 1, delay: 3)
-    var interactor2 = Interactor(id: 2, delay: 2)
-    var interactor3 = Interactor(id: 3, delay: 1)
+    var interactors = [Interactor]()
 
     override func viewDidLoad() {
         super.viewDidLoad()
         setupSubviews()
         setupConstraints()
         display(models: createModels())
+        createInteractors(3)
     }
 
-    private func createModels() -> [RowModel] {
-        stride(from: 1, to: 11, by: 1).map { RowModel(id: $0, count: 0) }
+    private func createModels() -> [InteractorModel] {
+        stride(from: 1, to: 11, by: 1).map { InteractorModel(id: $0, count: 0) }
     }
 
-    func display(models: [RowModel]) {
+    private func createInteractors(_ quantity: Int) {
+        Array(1...quantity).forEach { interactors.append(Interactor(id: $0)) }
+    }
+
+    private func shuffleInteractorsDelays() {
+        interactors.shuffled().enumerated().forEach { delay, interactor in
+            interactor.delay = delay
+        }
+    }
+
+    func display(models: [InteractorModel]) {
         var snapShot = Snapshot()
         snapShot.appendSections([.main])
         snapShot.appendItems(models)
         dataSource.apply(snapShot, animatingDifferences: true)
     }
 
+    private func display(loading: Bool) {
+        loadingLabel.isHidden = !loading
+        button.isEnabled = !loading
+    }
+
     @objc func loadTapped() {
         Task {
-            loadingLabel.isHidden = false
-            button.isEnabled = false
+            display(loading: true)
+            shuffleInteractorsDelays()
             await withTaskGroup(of: Void.self) { group in
-                group.addTask { [weak self] in await self?.getData(with: self?.interactor1) }
-                group.addTask { [weak self] in await self?.getData(with: self?.interactor2) }
-                group.addTask { [weak self] in await self?.getData(with: self?.interactor3) }
+                interactors.forEach { interactor in
+                    group.addTask { [weak self] in await self?.getData(with: interactor) }
+                }
             }
-            loadingLabel.isHidden = true
-            button.isEnabled = true
+            display(loading: false)
         }
     }
 

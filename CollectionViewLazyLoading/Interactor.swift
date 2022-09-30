@@ -7,11 +7,18 @@
 
 import Foundation
 
+struct InteractorModel: Hashable {
+    let id: Int
+    let count: Int
+    var name: String { "Row \(id)" }
+    var countLabel: String { "Update: \(count)"}
+}
+
 class Interactor {
     private let id: Int
     private var counter = 0
     var delay: Int
-    var model: RowModel?
+    var model: InteractorModel?
 
     init(id: Int, delay: Int = 0) {
         self.id = id
@@ -20,7 +27,7 @@ class Interactor {
 
     func fetchData() async {
         try? await Task.sleep(until: .now + .seconds(delay), clock: .continuous)
-        model = RowModel(id: id, count: counter)
+        model = InteractorModel(id: id, count: counter)
         counter += 1
     }
 }
